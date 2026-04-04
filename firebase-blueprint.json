@@ -1,0 +1,24 @@
+{
+  "entities": {
+    "RadioStation": {
+      "title": "Radio Station",
+      "description": "A radio station with streaming details.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the radio station." },
+        "streamingUrl": { "type": "string", "description": "The URL for the audio stream." },
+        "imageUrl": { "type": "string", "description": "The URL for the station's logo or image." },
+        "city": { "type": "string", "description": "The city where the station is located." },
+        "genre": { "type": "string", "description": "The genre of the radio station." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the station was added." }
+      },
+      "required": ["name", "streamingUrl", "imageUrl", "city"]
+    }
+  },
+  "firestore": {
+    "/radio_stations/{stationId}": {
+      "schema": "RadioStation",
+      "description": "Collection of radio stations added by users."
+    }
+  }
+}
