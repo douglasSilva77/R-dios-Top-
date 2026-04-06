@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, signInAnonymously, updateProfile } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, limit, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, limit, setDoc, where } from 'firebase/firestore';
 
 import firebaseConfig from './firebase-applet-config.json';
 
@@ -36,7 +36,8 @@ export {
   updateDoc, 
   deleteDoc, 
   limit,
-  setDoc
+  setDoc,
+  where
 };
 
 export enum OperationType {
