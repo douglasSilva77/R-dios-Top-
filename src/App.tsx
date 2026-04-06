@@ -2015,35 +2015,50 @@ function RadioApp() {
               <div className="flex gap-4">
                 <button 
                   onClick={() => {
+                    // Stop audio immediately
+                    if (audioRef.current) {
+                      audioRef.current.pause();
+                      audioRef.current.src = '';
+                    }
+                    setIsPlaying(false);
+
                     // Try multiple methods to close the app depending on the Android wrapper
-                    
-                    // 1. Cordova / PhoneGap
-                    if ((navigator as any).app && (navigator as any).app.exitApp) {
-                      (navigator as any).app.exitApp();
-                    } 
-                    // 2. Capacitor
-                    else if ((window as any).Capacitor && (window as any).Capacitor.Plugins && (window as any).Capacitor.Plugins.App) {
-                      (window as any).Capacitor.Plugins.App.exitApp();
+                    try {
+                      // 1. Cordova / PhoneGap
+                      if ((navigator as any).app && (navigator as any).app.exitApp) {
+                        (navigator as any).app.exitApp();
+                      } 
+                      // 2. Capacitor
+                      else if ((window as any).Capacitor && (window as any).Capacitor.Plugins && (window as any).Capacitor.Plugins.App) {
+                        (window as any).Capacitor.Plugins.App.exitApp();
+                      }
+                      // 3. Custom Android WebView Interfaces
+                      else if ((window as any).Android && (window as any).Android.closeApp) {
+                        (window as any).Android.closeApp();
+                      }
+                      else if ((window as any).Android && (window as any).Android.finish) {
+                        (window as any).Android.finish();
+                      }
+                      // 4. React Native WebView
+                      else if ((window as any).ReactNativeWebView) {
+                        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'closeApp' }));
+                      }
+                    } catch (e) {
+                      console.error("Error closing app natively:", e);
                     }
-                    // 3. Custom Android WebView Interfaces
-                    else if ((window as any).Android && (window as any).Android.closeApp) {
-                      (window as any).Android.closeApp();
-                    }
-                    else if ((window as any).Android && (window as any).Android.finish) {
-                      (window as any).Android.finish();
-                    }
-                    // 4. React Native WebView
-                    else if ((window as any).ReactNativeWebView) {
-                      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'closeApp' }));
-                    }
+
                     // 5. Standard Web / PWA Fallback
-                    else {
-                      window.close();
-                      // If window.close() is blocked, going back in history exits the PWA/Browser tab
-                      setTimeout(() => {
-                        window.history.go(-2);
-                      }, 100);
-                    }
+                    window.close();
+                    
+                    // Force Android WebView to close by emptying the history stack
+                    setTimeout(() => {
+                      window.history.go(-100);
+                    }, 100);
+                    
+                    // Ultimate fallback: redirect to a blank page so it stops consuming resources
+                    setTimeout(() => {
+                      window.location.replace("about:blank");
+                    }, 500);
                   }}
                   className="flex-1 py-3 bg-orange-600 rounded-xl font-bold hover:bg-orange-700 transition-colors text-white"
                 >
