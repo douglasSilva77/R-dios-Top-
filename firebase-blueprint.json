@@ -39,6 +39,16 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "When the item was created." }
       },
       "required": ["url", "title", "subtitle"]
+    },
+    "AdminSettings": {
+      "title": "Admin Settings",
+      "description": "Global settings for the application.",
+      "type": "object",
+      "properties": {
+        "adminPassword": { "type": "string", "description": "The password for the admin area." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "When the settings were last updated." }
+      },
+      "required": ["adminPassword"]
     }
   },
   "firestore": {
@@ -53,6 +63,10 @@
     "/carousel_items/{itemId}": {
       "schema": "CarouselItem",
       "description": "Collection of carousel items for the home screen."
+    },
+    "/settings/{settingId}": {
+      "schema": "AdminSettings",
+      "description": "Global application settings."
     }
   }
 }

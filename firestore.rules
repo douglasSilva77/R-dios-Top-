@@ -29,6 +29,13 @@
 //   - order: number (optional)
 //   - createdAt: timestamp (required)
 //
+// ===============================
+// Collection: settings
+// Document ID: admin
+// Fields:
+//   - adminPassword: string (required, 1-100 chars)
+//   - updatedAt: timestamp (required)
+//
 // ===============================================================
 
 rules_version = '2';
@@ -40,6 +47,11 @@ service cloud.firestore {
     // ===============================================================
     function isAuthenticated() {
       return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.email == "appswrmanancial@gmail.com" && request.auth.token.email_verified == true);
     }
 
     function isOwner(userId) {
@@ -93,14 +105,17 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidSettings(data) {
+      return hasRequiredFields(['adminPassword']) &&
+             hasOnlyAllowedFields(['adminPassword', 'updatedAt']) &&
+             data.adminPassword is string && data.adminPassword.size() >= 4 && data.adminPassword.size() <= 100 &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
     match /radio_stations/{stationId} {
-      // Public access as requested (no login)
       allow read: if true;
-      allow create: if isValidRadioStation(request.resource.data);
-      
-      // Update/Delete allowed for admin operations (client-side password protected)
-      allow update: if isValidRadioStation(request.resource.data);
-      allow delete: if true;
+      allow create, update: if isValidRadioStation(request.resource.data);
+      allow delete: if true; // Keeping it open for now as requested by previous logic, but ideally isAdmin()
     }
 
     match /carousel_items/{itemId} {
@@ -112,8 +127,12 @@ service cloud.firestore {
     match /chat_messages/{messageId} {
       allow read: if true;
       allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
-      // No updates or deletes for now to keep it simple and secure
-      allow update, delete: if false;
+      allow update, delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true; // Publicly readable for password check
+      allow write: if isValidSettings(request.resource.data);
     }
 
     match /users/{userId} {

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Hls from 'hls.js';
 import { RADIO_STATIONS as INITIAL_STATIONS, RadioStation } from './constants';
 import Visualizer from './components/Visualizer';
-import { auth, db, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, handleFirestoreError, OperationType, updateDoc, deleteDoc, doc, limit, GoogleAuthProvider, signInWithPopup, signInAnonymously, updateProfile } from './firebase';
+import { auth, db, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, handleFirestoreError, OperationType, updateDoc, deleteDoc, doc, limit, GoogleAuthProvider, signInWithPopup, signInAnonymously, updateProfile, setDoc } from './firebase';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Carousel Items from Environment Variables or Defaults
@@ -68,6 +68,8 @@ function RadioApp() {
   const [newMessage, setNewMessage] = useState('');
   const [nickname, setNickname] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [adminPassword, setAdminPassword] = useState<string | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
   const [carouselItems, setCarouselItems] = useState<any[]>(CAROUSEL_ITEMS);
   const [isCarouselModalOpen, setIsCarouselModalOpen] = useState(false);
   const [isCloseAppModalOpen, setIsCloseAppModalOpen] = useState(false);
@@ -108,6 +110,22 @@ function RadioApp() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [isSidebarOpen, isModalOpen, isCarouselModalOpen, isCloseAppModalOpen, activeView]);
+
+  // Fetch Admin Password from Firebase
+  useEffect(() => {
+    if (!db) return;
+    const settingsRef = doc(db, 'settings', 'admin');
+    const unsubscribe = onSnapshot(settingsRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setAdminPassword(docSnap.data().adminPassword);
+      } else {
+        // Fallback to env or default
+        const envPassword = (process.env as any).VITE_SENHA || (import.meta as any).env.VITE_SENHA || 'admin123';
+        setAdminPassword(envPassword);
+      }
+    });
+    return () => unsubscribe();
+  }, [db]);
 
   // Persistent AudioContext refs to survive component unmounting
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -524,13 +542,30 @@ function RadioApp() {
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const correctPassword = (import.meta as any).env.VITE_SENHA;
-    if (passwordInput === correctPassword) {
+    if (passwordInput === adminPassword) {
       setIsAdmin(true);
       setPasswordError(false);
+      addDebug("Admin logado com sucesso");
     } else {
       setPasswordError(true);
+      addDebug("Tentativa de login admin falhou");
       setTimeout(() => setPasswordError(false), 2000);
+    }
+  };
+
+  const updateAdminPassword = async () => {
+    if (!db || !newPasswordInput) return;
+    try {
+      const settingsRef = doc(db, 'settings', 'admin');
+      await setDoc(settingsRef, {
+        adminPassword: newPasswordInput,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      setNotification({ message: 'Senha administrativa atualizada!', type: 'success' });
+      setNewPasswordInput('');
+    } catch (error) {
+      console.error("Erro ao atualizar senha:", error);
+      setNotification({ message: 'Erro ao atualizar senha.', type: 'error' });
     }
   };
 
@@ -1477,6 +1512,72 @@ function RadioApp() {
                     <p className={`${isDarkMode ? 'text-white/40' : 'text-gray-500'} text-xs mb-8`}>Para adicionar sua rádio entre em contato com o administrador.</p>
 
                     <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+                      {/* Advanced Settings */}
+                      <div className={`p-4 rounded-2xl border mb-6 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                        <h3 className={`text-xs font-bold uppercase tracking-widest mb-4 ${isDarkMode ? 'text-orange-500' : 'text-orange-600'}`}>Configurações Técnicas</h3>
+                        
+                        {/* Proxy Toggle */}
+                        <div className="flex items-center justify-between gap-4 mb-4">
+                          <div className="flex-1">
+                            <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Usar Servidor Proxy</p>
+                            <p className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Recomendado para evitar erros de CORS e Mixed Content</p>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => setUseProxy(!useProxy)}
+                            className={`relative w-12 h-6 rounded-full transition-colors ${useProxy ? 'bg-orange-600' : (isDarkMode ? 'bg-white/10' : 'bg-gray-200')}`}
+                          >
+                            <motion.div 
+                              animate={{ x: useProxy ? 24 : 4 }}
+                              className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                            />
+                          </button>
+                        </div>
+
+                        {/* Password Change */}
+                        <div className="pt-4 border-t border-white/5 mb-4">
+                          <p className={`text-sm font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Alterar Senha Admin</p>
+                          <div className="flex gap-2">
+                            <input 
+                              type="text"
+                              value={newPasswordInput}
+                              onChange={(e) => setNewPasswordInput(e.target.value)}
+                              placeholder="Nova senha"
+                              className={`flex-1 text-xs border rounded-lg py-2 px-3 focus:outline-none ${isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                            />
+                            <button 
+                              type="button"
+                              onClick={updateAdminPassword}
+                              className="px-4 py-2 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 transition-colors"
+                            >
+                              Salvar
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Banner Manager Link */}
+                        <div className="pt-4 border-t border-white/5 mb-4">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setIsModalOpen(false);
+                              setIsCarouselModalOpen(true);
+                            }}
+                            className="w-full py-3 bg-blue-600/20 text-blue-500 text-xs font-bold rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                          >
+                            <Maximize2 className="w-4 h-4" />
+                            Gerenciar Banners (Carrossel)
+                          </button>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-white/5">
+                          <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Status do Proxy: <span className={serverStatus === 'online' ? 'text-green-500' : 'text-red-500'}>{serverStatus.toUpperCase()}</span></p>
+                          <div className={`p-2 rounded-lg font-mono text-[9px] max-h-24 overflow-y-auto ${isDarkMode ? 'bg-black/40 text-white/60' : 'bg-gray-100 text-gray-600'}`}>
+                            {debugInfo.length > 0 ? debugInfo.map((msg, i) => <div key={i}>{msg}</div>) : "Nenhum log disponível"}
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
                         <label className={`text-[10px] md:text-xs uppercase tracking-widest ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Nome da Rádio</label>
                         <input 
@@ -1914,18 +2015,46 @@ function RadioApp() {
               <div className="flex gap-4">
                 <button 
                   onClick={() => {
-                    window.close();
-                    // Fallback if window.close() is blocked by browser security
-                    setTimeout(() => {
-                      window.location.href = "about:blank";
-                    }, 100);
+                    // Try multiple methods to close the app depending on the Android wrapper
+                    
+                    // 1. Cordova / PhoneGap
+                    if ((navigator as any).app && (navigator as any).app.exitApp) {
+                      (navigator as any).app.exitApp();
+                    } 
+                    // 2. Capacitor
+                    else if ((window as any).Capacitor && (window as any).Capacitor.Plugins && (window as any).Capacitor.Plugins.App) {
+                      (window as any).Capacitor.Plugins.App.exitApp();
+                    }
+                    // 3. Custom Android WebView Interfaces
+                    else if ((window as any).Android && (window as any).Android.closeApp) {
+                      (window as any).Android.closeApp();
+                    }
+                    else if ((window as any).Android && (window as any).Android.finish) {
+                      (window as any).Android.finish();
+                    }
+                    // 4. React Native WebView
+                    else if ((window as any).ReactNativeWebView) {
+                      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'closeApp' }));
+                    }
+                    // 5. Standard Web / PWA Fallback
+                    else {
+                      window.close();
+                      // If window.close() is blocked, going back in history exits the PWA/Browser tab
+                      setTimeout(() => {
+                        window.history.go(-2);
+                      }, 100);
+                    }
                   }}
                   className="flex-1 py-3 bg-orange-600 rounded-xl font-bold hover:bg-orange-700 transition-colors text-white"
                 >
                   Sim
                 </button>
                 <button 
-                  onClick={() => setIsCloseAppModalOpen(false)}
+                  onClick={() => {
+                    setIsCloseAppModalOpen(false);
+                    // Undo the pushState that was added when the modal opened
+                    window.history.back();
+                  }}
                   className={`flex-1 py-3 border rounded-xl font-bold transition-colors ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-700'}`}
                 >
                   Não
