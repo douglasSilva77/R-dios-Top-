@@ -1,0 +1,21 @@
+{
+  "name": "Rádios Top",
+  "short_name": "Rádios Top",
+  "description": "O melhor do rádio online com visualizadores em tempo real.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0502",
+  "theme_color": "#ea580c",
+  "icons": [
+    {
+      "src": "https://i.imgur.com/x0zbMs6.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.imgur.com/x0zbMs6.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

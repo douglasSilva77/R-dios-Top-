@@ -11,6 +11,24 @@
 //   - city: string (required, 1-100 chars)
 //   - createdAt: timestamp (required)
 //
+// Collection: chat_messages
+// Document ID: auto-generated
+// Fields:
+//   - text: string (required, 1-1000 chars)
+//   - uid: string (required, matches auth.uid)
+//   - displayName: string (required, 1-100 chars)
+//   - photoURL: string (optional, valid URL)
+//   - createdAt: timestamp (required)
+//
+// Collection: carousel_items
+// Document ID: auto-generated
+// Fields:
+//   - url: string (required, valid URL)
+//   - title: string (required, 1-100 chars)
+//   - subtitle: string (required, 1-200 chars)
+//   - order: number (optional)
+//   - createdAt: timestamp (required)
+//
 // ===============================================================
 
 rules_version = '2';
@@ -55,6 +73,26 @@ service cloud.firestore {
              (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
+    function isValidChatMessage(data) {
+      return hasRequiredFields(['text', 'uid', 'displayName', 'createdAt']) &&
+             hasOnlyAllowedFields(['text', 'uid', 'displayName', 'photoURL', 'createdAt']) &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 1000 &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+             (!('photoURL' in data) || (data.photoURL == null || isValidUrl(data.photoURL))) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidCarouselItem(data) {
+      return hasRequiredFields(['url', 'title', 'subtitle', 'createdAt']) &&
+             hasOnlyAllowedFields(['url', 'title', 'subtitle', 'order', 'createdAt']) &&
+             isValidUrl(data.url) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.subtitle is string && data.subtitle.size() > 0 && data.subtitle.size() <= 200 &&
+             (!('order' in data) || data.order is number) &&
+             data.createdAt is timestamp;
+    }
+
     match /radio_stations/{stationId} {
       // Public access as requested (no login)
       allow read: if true;
@@ -63,6 +101,19 @@ service cloud.firestore {
       // Update/Delete allowed for admin operations (client-side password protected)
       allow update: if isValidRadioStation(request.resource.data);
       allow delete: if true;
+    }
+
+    match /carousel_items/{itemId} {
+      allow read: if true;
+      allow create, update: if isValidCarouselItem(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /chat_messages/{messageId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
+      // No updates or deletes for now to keep it simple and secure
+      allow update, delete: if false;
     }
 
     match /users/{userId} {

@@ -13,12 +13,46 @@
         "createdAt": { "type": "string", "format": "date-time", "description": "When the station was added." }
       },
       "required": ["name", "streamingUrl", "imageUrl", "city"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A message sent in the community chat.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string", "description": "The message content." },
+        "uid": { "type": "string", "description": "The sender's unique ID." },
+        "displayName": { "type": "string", "description": "The sender's display name." },
+        "photoURL": { "type": "string", "description": "The sender's profile photo URL." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the message was sent." }
+      },
+      "required": ["text", "uid", "displayName"]
+    },
+    "CarouselItem": {
+      "title": "Carousel Item",
+      "description": "An item displayed in the home screen carousel.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "description": "The image URL for the carousel item." },
+        "title": { "type": "string", "description": "The title of the carousel item." },
+        "subtitle": { "type": "string", "description": "The subtitle of the carousel item." },
+        "order": { "type": "integer", "description": "The display order of the item." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the item was created." }
+      },
+      "required": ["url", "title", "subtitle"]
     }
   },
   "firestore": {
     "/radio_stations/{stationId}": {
       "schema": "RadioStation",
       "description": "Collection of radio stations added by users."
+    },
+    "/chat_messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Collection of chat messages."
+    },
+    "/carousel_items/{itemId}": {
+      "schema": "CarouselItem",
+      "description": "Collection of carousel items for the home screen."
     }
   }
 }

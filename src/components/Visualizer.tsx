@@ -1,104 +1,149 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, MutableRefObject } from 'react';
 
 interface VisualizerProps {
   audioElement: HTMLAudioElement | null;
   isPlaying: boolean;
+  isDarkMode: boolean;
+  audioContextRef: MutableRefObject<AudioContext | null>;
+  analyserRef: MutableRefObject<AnalyserNode | null>;
+  sourceRef: MutableRefObject<MediaElementAudioSourceNode | null>;
 }
 
-export default function Visualizer({ audioElement, isPlaying }: VisualizerProps) {
+export default function Visualizer({ 
+  audioElement, 
+  isPlaying, 
+  isDarkMode,
+  audioContextRef,
+  analyserRef,
+  sourceRef
+}: VisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const animationRef = useRef<number>(0);
+  const peaksRef = useRef<number[]>([]);
 
   useEffect(() => {
     if (!audioElement || !canvasRef.current) return;
 
-    // Reset source if the audio element changed
-    if (sourceRef.current && (sourceRef.current as any).mediaElement !== audioElement) {
-      console.log("Visualizer: Audio element changed, resetting source.");
-      sourceRef.current.disconnect();
-      sourceRef.current = null;
-    }
-
     if (!audioContextRef.current) {
       try {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContextClass) {
-          console.warn("AudioContext not supported in this browser.");
-          return;
-        }
+        if (!AudioContextClass) return;
+        
         audioContextRef.current = new AudioContextClass();
         analyserRef.current = audioContextRef.current.createAnalyser();
-        
-        // Only create source if not already created
-        if (!sourceRef.current) {
-          sourceRef.current = audioContextRef.current.createMediaElementSource(audioElement);
-          sourceRef.current.connect(analyserRef.current);
-          analyserRef.current.connect(audioContextRef.current.destination);
-        }
+        analyserRef.current.fftSize = 256;
       } catch (error) {
         console.error("Visualizer initialization failed:", error);
         return;
       }
     }
 
-    if (!analyserRef.current || !canvasRef.current) return;
-
+    const audioContext = audioContextRef.current;
     const analyser = analyserRef.current;
-    analyser.fftSize = 256;
+
+    if (!audioContext || !analyser) return;
+
+    // Connect source if not already connected
+    if (!sourceRef.current) {
+      try {
+        sourceRef.current = audioContext.createMediaElementSource(audioElement);
+        sourceRef.current.connect(analyser);
+        analyser.connect(audioContext.destination);
+      } catch (e) {
+        console.warn("MediaElementSource already created or failed to connect:", e);
+      }
+    }
+
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    
+    if (peaksRef.current.length !== bufferLength) {
+      peaksRef.current = new Array(bufferLength).fill(0);
+    }
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const resizeCanvas = () => {
+      if (canvasRef.current) {
+        canvasRef.current.width = canvasRef.current.clientWidth * window.devicePixelRatio;
+        canvasRef.current.height = canvasRef.current.clientHeight * window.devicePixelRatio;
+      }
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
     const draw = () => {
       animationRef.current = requestAnimationFrame(draw);
-      analyser.getByteFrequencyData(dataArray);
+      
+      if (isPlaying) {
+        analyser.getByteFrequencyData(dataArray);
+      } else {
+        // If paused, slowly decay the dataArray
+        for (let i = 0; i < dataArray.length; i++) {
+          dataArray[i] = Math.max(0, dataArray[i] - 5);
+        }
+      }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const barWidth = (canvas.width / bufferLength) * 2.5;
-      let barHeight;
-      let x = 0;
+      const drawWave = (offset: number, color: string, opacity: number, scale: number) => {
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.globalAlpha = opacity;
+        
+        const sliceWidth = canvas.width / (bufferLength * 0.5);
+        let x = 0;
 
-      for (let i = 0; i < bufferLength; i++) {
-        barHeight = dataArray[i] / 2;
+        ctx.moveTo(0, canvas.height);
 
-        const r = barHeight + 25 * (i / bufferLength);
-        const g = 250 * (i / bufferLength);
-        const b = 50;
+        for (let i = 0; i < bufferLength * 0.5; i++) {
+          const v = (dataArray[i] / 255.0) * scale;
+          const y = canvas.height - (v * canvas.height * 0.8) - offset;
 
-        ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+          if (i === 0) {
+            ctx.lineTo(x, y);
+          } else {
+            // Bezier curve for smoother waves
+            const prevV = (dataArray[i-1] / 255.0) * scale;
+            const prevY = canvas.height - (prevV * canvas.height * 0.8) - offset;
+            const cpX = x - sliceWidth / 2;
+            ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y);
+          }
 
-        x += barWidth + 1;
-      }
+          x += sliceWidth;
+        }
+
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+      };
+
+      // Draw 3 layers of waves
+      drawWave(0, '#ea580c', 0.6, 1.0);      // Primary Orange
+      drawWave(5, '#7c3aed', 0.4, 0.8);      // Purple
+      drawWave(10, '#16a34a', 0.3, 0.6);     // Green
+      
+      ctx.globalAlpha = 1.0;
     };
 
-    if (isPlaying && audioContextRef.current) {
-      if (audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
-      }
-      draw();
-    } else {
-      cancelAnimationFrame(animationRef.current);
+    if (audioContext.state === 'suspended' && isPlaying) {
+      audioContext.resume();
     }
+    
+    draw();
 
     return () => {
       cancelAnimationFrame(animationRef.current);
+      window.removeEventListener('resize', resizeCanvas);
     };
-  }, [audioElement, isPlaying]);
+  }, [audioElement, isPlaying, isDarkMode]);
 
   return (
     <canvas 
       ref={canvasRef} 
-      width={400} 
-      height={100} 
-      className="w-full h-24 opacity-50 pointer-events-none"
+      className="w-full h-full pointer-events-none"
     />
   );
 }

@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signInAnonymously, updateProfile } from 'firebase/auth';
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, limit } from 'firebase/firestore';
 
 import firebaseConfig from './firebase-applet-config.json';
 
@@ -23,7 +23,7 @@ if (isFirebaseConfigured) {
   console.warn("Firebase is not configured. Some features will be disabled.");
 }
 
-export { app, db, auth };
+export { app, db, auth, GoogleAuthProvider, signInWithPopup, signInAnonymously, updateProfile };
 
 export { 
   collection, 
@@ -34,7 +34,8 @@ export {
   serverTimestamp, 
   doc, 
   updateDoc, 
-  deleteDoc 
+  deleteDoc, 
+  limit 
 };
 
 export enum OperationType {
