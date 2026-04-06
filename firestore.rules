@@ -134,10 +134,5 @@ service cloud.firestore {
       allow read: if true; // Publicly readable for password check
       allow write: if isValidSettings(request.resource.data);
     }
-
-    match /active_listeners/{sessionId} {
-      allow read: if true;
-      allow write: if true; // Allow any client to register their presence
-    }
   }
 }

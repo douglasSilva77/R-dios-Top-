@@ -81,64 +81,6 @@ function RadioApp() {
     order: 0
   });
 
-  // Listeners Tracking
-  const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  const [listenersCount, setListenersCount] = useState(0);
-
-  // Update presence
-  useEffect(() => {
-    if (!db || !isPlaying || !currentStation) return;
-
-    const updatePresence = async () => {
-      try {
-        const docRef = doc(db, 'active_listeners', sessionId);
-        await setDoc(docRef, {
-          stationId: currentStation.id,
-          timestamp: Date.now()
-        });
-      } catch (e) {
-        console.error("Error updating presence", e);
-      }
-    };
-
-    updatePresence();
-    const interval = setInterval(updatePresence, 30000); // Update every 30 seconds
-
-    return () => {
-      clearInterval(interval);
-      try {
-        deleteDoc(doc(db, 'active_listeners', sessionId));
-      } catch (e) {}
-    };
-  }, [db, isPlaying, currentStation, sessionId]);
-
-  // Listen to presence
-  useEffect(() => {
-    if (!db || !currentStation) return;
-
-    const q = query(
-      collection(db, 'active_listeners'),
-      where('stationId', '==', currentStation.id)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const now = Date.now();
-      let count = 0;
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        // Count if updated in the last 60 seconds
-        if (now - data.timestamp < 60000) {
-          count++;
-        }
-      });
-      setListenersCount(count);
-    }, (error) => {
-      console.error("Error fetching listeners:", error);
-    });
-
-    return () => unsubscribe();
-  }, [db, currentStation]);
-
   // Back button handling for mobile
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -1016,14 +958,6 @@ function RadioApp() {
 
                     {/* Visualizer Area */}
                     <div className="h-24 md:h-32 flex items-center justify-center relative w-full px-4 overflow-hidden">
-                      {/* Listeners Count Badge */}
-                      <div className="absolute top-2 right-4 z-10 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-xs font-bold text-white/90">
-                          {listenersCount} {listenersCount === 1 ? 'ouvinte' : 'ouvintes'}
-                        </span>
-                      </div>
-                      
                       <div className="w-full max-w-2xl h-full flex items-center">
                         <Visualizer 
                           audioElement={audioRef.current} 
