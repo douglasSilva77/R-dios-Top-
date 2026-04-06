@@ -2049,27 +2049,13 @@ function RadioApp() {
 
                     // 5. Standard Web / PWA Fallback
                     window.close();
-                    
-                    // Force Android WebView to close by emptying the history stack
-                    setTimeout(() => {
-                      window.history.go(-100);
-                    }, 100);
-                    
-                    // Ultimate fallback: redirect to a blank page so it stops consuming resources
-                    setTimeout(() => {
-                      window.location.replace("about:blank");
-                    }, 500);
                   }}
                   className="flex-1 py-3 bg-orange-600 rounded-xl font-bold hover:bg-orange-700 transition-colors text-white"
                 >
                   Sim
                 </button>
                 <button 
-                  onClick={() => {
-                    setIsCloseAppModalOpen(false);
-                    // Undo the pushState that was added when the modal opened
-                    window.history.back();
-                  }}
+                  onClick={() => setIsCloseAppModalOpen(false)}
                   className={`flex-1 py-3 border rounded-xl font-bold transition-colors ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-700'}`}
                 >
                   Não
