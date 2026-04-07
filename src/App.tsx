@@ -293,7 +293,7 @@ function RadioApp() {
 
   const [passwordError, setPasswordError] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
-  const [useProxy, setUseProxy] = useState(true);
+  const [useProxy, setUseProxy] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
