@@ -50,10 +50,18 @@ function RadioApp() {
     const requestWakeLock = async () => {
       if ('wakeLock' in navigator && isPlaying) {
         try {
+          // Check if the permission is allowed by policy
+          if ((navigator as any).permissions) {
+            const status = await (navigator as any).permissions.query({ name: 'screen-wake-lock' });
+            if (status.state === 'denied') {
+              addDebug("Wake Lock negado pela política de permissões");
+              return;
+            }
+          }
           wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
           addDebug("Wake Lock ativado");
         } catch (err: any) {
-          console.error(`${err.name}, ${err.message}`);
+          console.warn(`Wake Lock Error: ${err.name}, ${err.message}`);
         }
       }
     };
@@ -353,17 +361,23 @@ function RadioApp() {
   );
 
   const requestNotificationPermission = async () => {
-    if (typeof Notification !== 'undefined') {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-      if (permission === 'granted') {
-        setNotification({
-          message: "Notificações ativadas com sucesso!",
-          type: 'success'
-        });
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      try {
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        if (permission === 'granted') {
+          addDebug("Permissão de notificação concedida");
+        }
+      } catch (err) {
+        console.error("Erro ao solicitar permissão de notificação:", err);
       }
     }
   };
+
+  // Request notification permission on mount
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -1664,27 +1678,7 @@ function RadioApp() {
                           </button>
                         </div>
 
-                         {/* Notification Permission */}
-                        <div className="flex items-center justify-between gap-4 mb-4 pt-4 border-t border-white/5">
-                          <div className="flex-1">
-                            <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Permitir Notificações</p>
-                            <p className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Necessário para controles na tela de bloqueio e segundo plano</p>
-                          </div>
-                          <button 
-                            type="button"
-                            onClick={requestNotificationPermission}
-                            disabled={notificationPermission === 'granted'}
-                            className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${
-                              notificationPermission === 'granted' 
-                                ? 'bg-green-500/20 text-green-500 cursor-default' 
-                                : 'bg-orange-600 text-white hover:bg-orange-700'
-                            }`}
-                          >
-                            {notificationPermission === 'granted' ? 'ATIVADO' : 'ATIVAR'}
-                          </button>
-                        </div>
-
-                        {/* Password Change */}
+                         {/* Password Change */}
                         <div className="pt-4 border-t border-white/5 mb-4">
                           <p className={`text-sm font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Alterar Senha Admin</p>
                           <div className="flex gap-2">

@@ -1,5 +1,5 @@
 {
   "name": "Rádios Top",
   "description": "Rádios Top - O melhor do rádio online com visualizadores em tempo real e interface imersiva.",
-  "requestFramePermissions": ["notifications"]
+  "requestFramePermissions": ["notifications", "screen-wake-lock"]
 }
