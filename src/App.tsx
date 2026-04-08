@@ -541,27 +541,44 @@ function RadioApp() {
   }, [currentStation, allStations, handleStationSelect]);
 
   // Media Session API for background playback and lock screen controls
-  useEffect(() => {
+  const updateMediaSession = useCallback(() => {
     if ('mediaSession' in navigator && currentStation) {
       try {
+        const artworkUrl = currentStation.logo || `https://picsum.photos/seed/${currentStation.id}/512/512`;
+        
         navigator.mediaSession.metadata = new MediaMetadata({
           title: currentStation.name,
-          artist: currentStation.city || 'Rádios Top',
+          artist: (currentStation as any).city || currentStation.country || 'Rádios Top',
           album: currentStation.genre || 'Streaming ao vivo',
           artwork: [
-            { src: currentStation.logo || '', sizes: '96x96', type: 'image/png' },
-            { src: currentStation.logo || '', sizes: '128x128', type: 'image/png' },
-            { src: currentStation.logo || '', sizes: '192x192', type: 'image/png' },
-            { src: currentStation.logo || '', sizes: '256x256', type: 'image/png' },
-            { src: currentStation.logo || '', sizes: '384x384', type: 'image/png' },
-            { src: currentStation.logo || '', sizes: '512x512', type: 'image/png' },
+            { src: artworkUrl, sizes: '96x96', type: 'image/png' },
+            { src: artworkUrl, sizes: '128x128', type: 'image/png' },
+            { src: artworkUrl, sizes: '192x192', type: 'image/png' },
+            { src: artworkUrl, sizes: '256x256', type: 'image/png' },
+            { src: artworkUrl, sizes: '384x384', type: 'image/png' },
+            { src: artworkUrl, sizes: '512x512', type: 'image/png' },
           ]
         });
 
-        navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
-        navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+        navigator.mediaSession.setActionHandler('play', () => {
+          setIsPlaying(true);
+          audioRef.current?.play().catch(() => {});
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          setIsPlaying(false);
+          audioRef.current?.pause();
+        });
         navigator.mediaSession.setActionHandler('previoustrack', handlePrev);
         navigator.mediaSession.setActionHandler('nexttrack', handleNext);
+        
+        // Optional: stop handler
+        navigator.mediaSession.setActionHandler('stop', () => {
+          setIsPlaying(false);
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+          }
+        });
       } catch (error) {
         console.error("MediaSession error:", error);
       }
@@ -569,10 +586,18 @@ function RadioApp() {
   }, [currentStation, handlePrev, handleNext]);
 
   useEffect(() => {
+    updateMediaSession();
+  }, [currentStation, updateMediaSession]);
+
+  useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      // Re-sync metadata when playing starts to ensure Android notification shows up
+      if (isPlaying) {
+        setTimeout(updateMediaSession, 500);
+      }
     }
-  }, [isPlaying]);
+  }, [isPlaying, updateMediaSession]);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1875,8 +1900,18 @@ function RadioApp() {
         onPlay={() => {
           setIsPlaying(true);
           setPlaybackError(null);
+          // Sync media session state
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'playing';
+          }
         }}
-        onPause={() => setIsPlaying(false)}
+        onPause={() => {
+          setIsPlaying(false);
+          // Sync media session state
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'paused';
+          }
+        }}
         onError={handleAudioError}
       />
 
