@@ -43,6 +43,60 @@ function RadioApp() {
   const [stations, setStations] = useState<CustomRadioStation[]>(INITIAL_STATIONS as any);
   const [currentStation, setCurrentStation] = useState<RadioStation | CustomRadioStation | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const wakeLockRef = useRef<any>(null);
+
+  // Wake Lock to prevent sleep during playback
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator && isPlaying) {
+        try {
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          addDebug("Wake Lock ativado");
+        } catch (err: any) {
+          console.error(`${err.name}, ${err.message}`);
+        }
+      }
+    };
+
+    if (isPlaying) {
+      requestWakeLock();
+    } else {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().then(() => {
+          wakeLockRef.current = null;
+          addDebug("Wake Lock liberado");
+        });
+      }
+    }
+
+    return () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release();
+      }
+    };
+  }, [isPlaying]);
+  // Silent audio keep-alive for background playback on Android WebViews
+  useEffect(() => {
+    let silentAudio: HTMLAudioElement | null = null;
+    
+    if (isPlaying) {
+      // Base64 of a 1-second silent MP3
+      const silentSrc = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+      silentAudio = new Audio(silentSrc);
+      silentAudio.loop = true;
+      silentAudio.volume = 0.01;
+      silentAudio.play().catch(() => {});
+    }
+
+    return () => {
+      if (silentAudio) {
+        silentAudio.pause();
+        silentAudio.src = "";
+        silentAudio = null;
+      }
+    };
+  }, [isPlaying]);
+
   const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -546,39 +600,40 @@ function RadioApp() {
       try {
         const artworkUrl = currentStation.logo || `https://picsum.photos/seed/${currentStation.id}/512/512`;
         
+        // Ensure URLs are absolute for native wrappers
+        const absoluteArtworkUrl = artworkUrl.startsWith('http') ? artworkUrl : window.location.origin + artworkUrl;
+
         navigator.mediaSession.metadata = new MediaMetadata({
           title: currentStation.name,
           artist: (currentStation as any).city || currentStation.country || 'Rádios Top',
           album: currentStation.genre || 'Streaming ao vivo',
           artwork: [
-            { src: artworkUrl, sizes: '96x96', type: 'image/png' },
-            { src: artworkUrl, sizes: '128x128', type: 'image/png' },
-            { src: artworkUrl, sizes: '192x192', type: 'image/png' },
-            { src: artworkUrl, sizes: '256x256', type: 'image/png' },
-            { src: artworkUrl, sizes: '384x384', type: 'image/png' },
-            { src: artworkUrl, sizes: '512x512', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '96x96', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '128x128', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '192x192', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '256x256', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '384x384', type: 'image/png' },
+            { src: absoluteArtworkUrl, sizes: '512x512', type: 'image/png' },
           ]
         });
 
-        navigator.mediaSession.setActionHandler('play', () => {
+        const playHandler = () => {
           setIsPlaying(true);
-          audioRef.current?.play().catch(() => {});
-        });
-        navigator.mediaSession.setActionHandler('pause', () => {
+          if (audioRef.current) audioRef.current.play().catch(() => {});
+        };
+
+        const pauseHandler = () => {
           setIsPlaying(false);
-          audioRef.current?.pause();
-        });
+          if (audioRef.current) audioRef.current.pause();
+        };
+
+        navigator.mediaSession.setActionHandler('play', playHandler);
+        navigator.mediaSession.setActionHandler('pause', pauseHandler);
         navigator.mediaSession.setActionHandler('previoustrack', handlePrev);
         navigator.mediaSession.setActionHandler('nexttrack', handleNext);
         
-        // Optional: stop handler
-        navigator.mediaSession.setActionHandler('stop', () => {
-          setIsPlaying(false);
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-          }
-        });
+        // Android specific: sometimes stop is required for the notification to behave
+        navigator.mediaSession.setActionHandler('stop', pauseHandler);
       } catch (error) {
         console.error("MediaSession error:", error);
       }
@@ -1897,6 +1952,8 @@ function RadioApp() {
         ref={audioRef} 
         preload="auto"
         crossOrigin="anonymous"
+        playsInline
+        webkit-playsinline="true"
         onPlay={() => {
           setIsPlaying(true);
           setPlaybackError(null);
