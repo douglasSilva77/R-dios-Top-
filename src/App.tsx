@@ -348,6 +348,22 @@ function RadioApp() {
   const [passwordError, setPasswordError] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [useProxy, setUseProxy] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+
+  const requestNotificationPermission = async () => {
+    if (typeof Notification !== 'undefined') {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === 'granted') {
+        setNotification({
+          message: "Notificações ativadas com sucesso!",
+          type: 'success'
+        });
+      }
+    }
+  };
 
   // Form State
   const [formData, setFormData] = useState({
@@ -1645,6 +1661,26 @@ function RadioApp() {
                               animate={{ x: useProxy ? 24 : 4 }}
                               className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
                             />
+                          </button>
+                        </div>
+
+                         {/* Notification Permission */}
+                        <div className="flex items-center justify-between gap-4 mb-4 pt-4 border-t border-white/5">
+                          <div className="flex-1">
+                            <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Permitir Notificações</p>
+                            <p className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Necessário para controles na tela de bloqueio e segundo plano</p>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={requestNotificationPermission}
+                            disabled={notificationPermission === 'granted'}
+                            className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${
+                              notificationPermission === 'granted' 
+                                ? 'bg-green-500/20 text-green-500 cursor-default' 
+                                : 'bg-orange-600 text-white hover:bg-orange-700'
+                            }`}
+                          >
+                            {notificationPermission === 'granted' ? 'ATIVADO' : 'ATIVAR'}
                           </button>
                         </div>
 
