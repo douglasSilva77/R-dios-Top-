@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, SkipForward, SkipBack, Volume, Volume1, Volume2, VolumeX, Search, Radio, Music2, Plus, X, MapPin, Share2, ExternalLink, ChevronLeft, ChevronRight, Heart, Star, Menu, Maximize2, MessageSquare, Info, Send, User, LogOut, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Hls from 'hls.js';
@@ -520,25 +520,59 @@ function RadioApp() {
     }
   }, [stations, currentStation]);
 
-  const handleStationSelect = (station: RadioStation | CustomRadioStation) => {
+  const handleStationSelect = useCallback((station: RadioStation | CustomRadioStation) => {
     setPlaybackError(null);
     setCurrentStation(station);
     setIsPlaying(true);
-  };
+  }, []);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (!currentStation || allStations.length === 0) return;
     const currentIndex = allStations.findIndex(s => s.id === currentStation?.id);
     const nextIndex = (currentIndex + 1) % allStations.length;
     handleStationSelect(allStations[nextIndex]);
-  };
+  }, [currentStation, allStations, handleStationSelect]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (!currentStation || allStations.length === 0) return;
     const currentIndex = allStations.findIndex(s => s.id === currentStation?.id);
     const prevIndex = (currentIndex - 1 + allStations.length) % allStations.length;
     handleStationSelect(allStations[prevIndex]);
-  };
+  }, [currentStation, allStations, handleStationSelect]);
+
+  // Media Session API for background playback and lock screen controls
+  useEffect(() => {
+    if ('mediaSession' in navigator && currentStation) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentStation.name,
+          artist: currentStation.city || 'Rádios Top',
+          album: currentStation.genre || 'Streaming ao vivo',
+          artwork: [
+            { src: currentStation.logo || '', sizes: '96x96', type: 'image/png' },
+            { src: currentStation.logo || '', sizes: '128x128', type: 'image/png' },
+            { src: currentStation.logo || '', sizes: '192x192', type: 'image/png' },
+            { src: currentStation.logo || '', sizes: '256x256', type: 'image/png' },
+            { src: currentStation.logo || '', sizes: '384x384', type: 'image/png' },
+            { src: currentStation.logo || '', sizes: '512x512', type: 'image/png' },
+          ]
+        });
+
+        navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+        navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+        navigator.mediaSession.setActionHandler('previoustrack', handlePrev);
+        navigator.mediaSession.setActionHandler('nexttrack', handleNext);
+      } catch (error) {
+        console.error("MediaSession error:", error);
+      }
+    }
+  }, [currentStation, handlePrev, handleNext]);
+
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
+  }, [isPlaying]);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
