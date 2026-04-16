@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Volume, Volume1, Volume2, VolumeX, Search, Radio, Music2, Plus, X, MapPin, Share2, ExternalLink, ChevronLeft, ChevronRight, Heart, Star, Menu, Maximize2, MessageSquare, Info, Send, User, LogOut, Sun, Moon } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Volume, Volume1, Volume2, VolumeX, Search, Radio, Music2, Plus, X, MapPin, Share2, ExternalLink, ChevronLeft, ChevronRight, Heart, Star, Menu, Maximize2, MessageSquare, Info, Send, User, LogOut, Sun, Moon, Infinity } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Hls from 'hls.js';
 import { RADIO_STATIONS as INITIAL_STATIONS, RadioStation } from './constants';
@@ -125,7 +125,7 @@ function RadioApp() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'home' | 'chat' | 'about'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'chat' | 'about' | 'background-guide'>('home');
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [nickname, setNickname] = useState('');
@@ -1473,6 +1473,64 @@ function RadioApp() {
             </div>
           </motion.div>
         )}
+
+        {activeView === 'background-guide' && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`max-w-4xl mx-auto w-full backdrop-blur-xl border rounded-3xl p-8 md:p-12 space-y-8 shadow-2xl transition-colors duration-500 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}
+          >
+            <div className="flex justify-between items-start mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-orange-600/20 rounded-2xl flex items-center justify-center">
+                  <Infinity className="w-8 h-8 text-orange-600" />
+                </div>
+                <div>
+                  <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Tocar sem parar</h2>
+                  <p className="text-orange-500 font-mono text-xs tracking-widest uppercase mt-1">Guia de Configuração</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveView('home')}
+                className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-gray-400 hover:text-gray-900'}`}
+                title="Voltar para Rádios"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-8">
+              <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-orange-600/10 border-orange-600/20' : 'bg-orange-50 border-orange-100'}`}>
+                <h3 className="text-xl font-bold text-orange-600 mb-2">Tocar em Segundo Plano</h3>
+                <p className={`text-sm ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}>
+                  Para garantir que a música não pare quando você sair do app ou desligar a tela, siga os passos abaixo para desativar as restrições de bateria do sistema Android.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { step: "Passo 1", title: "Configurações do Sistema", desc: "Abra as Configurações do seu celular e vá em \"Aplicativos\" ou \"Apps\"." },
+                  { step: "Passo 2", title: "Selecione o App", desc: "Encontre e selecione o \"Vitrola Flashback\" na lista de aplicativos." },
+                  { step: "Passo 3", title: "Bateria / Economia de Energia", desc: "Toque em \"Bateria\" ou \"Uso da bateria\"." },
+                  { step: "Passo 4", title: "Sem Restrições", desc: "Selecione a opção \"Sem restrições\" ou \"Não otimizar\". Isso permite que a rádio continue tocando mesmo com a tela desligada." }
+                ].map((item, idx) => (
+                  <div key={idx} className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                    <span className="text-orange-500 font-mono text-[10px] uppercase tracking-widest font-bold">{item.step}</span>
+                    <h4 className={`font-bold mt-1 mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.title}</h4>
+                    <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-blue-600/10 border-blue-600/20' : 'bg-blue-50 border-blue-100'}`}>
+                <h3 className="text-lg font-bold text-blue-600 mb-2">Dica Adicional</h3>
+                <p className={`text-sm ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}>
+                  Em alguns aparelhos (Xiaomi, Samsung, Huawei), você também pode precisar "Bloquear" o app na tela de aplicativos recentes para evitar que o sistema o feche automaticamente.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </main>
 
       {/* Sidebar */}
@@ -1524,6 +1582,13 @@ function RadioApp() {
                 >
                   <Info className={`w-5 h-5 ${activeView === 'about' ? 'text-white' : 'text-orange-600'}`} />
                   <span className="font-bold">Quem Somos</span>
+                </button>
+                <button 
+                  onClick={() => { setActiveView('background-guide'); setIsSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all ${activeView === 'background-guide' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : (isDarkMode ? 'hover:bg-white/5 text-white/60 hover:text-white' : 'hover:bg-black/5 text-gray-600 hover:text-gray-900')}`}
+                >
+                  <Infinity className={`w-5 h-5 ${activeView === 'background-guide' ? 'text-white' : 'text-orange-600'}`} />
+                  <span className="font-bold">Tocar sem parar</span>
                 </button>
                 <button 
                   onClick={() => { setIsModalOpen(true); setIsSidebarOpen(false); }}
