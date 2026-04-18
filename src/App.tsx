@@ -1510,7 +1510,7 @@ function RadioApp() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
                   { step: "Passo 1", title: "Configurações do Sistema", desc: "Abra as Configurações do seu celular e vá em \"Aplicativos\" ou \"Apps\"." },
-                  { step: "Passo 2", title: "Selecione o App", desc: "Encontre e selecione o \"Vitrola Flashback\" na lista de aplicativos." },
+                  { step: "Passo 2", title: "Selecione o App", desc: "Encontre e selecione o \"Rádios Top\" na lista de aplicativos." },
                   { step: "Passo 3", title: "Bateria / Economia de Energia", desc: "Toque em \"Bateria\" ou \"Uso da bateria\"." },
                   { step: "Passo 4", title: "Sem Restrições", desc: "Selecione a opção \"Sem restrições\" ou \"Não otimizar\". Isso permite que a rádio continue tocando mesmo com a tela desligada." }
                 ].map((item, idx) => (
