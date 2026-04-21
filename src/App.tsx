@@ -125,7 +125,7 @@ function RadioApp() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'home' | 'chat' | 'about' | 'background-guide'>('home');
+  const [activeView, setActiveView] = useState<'home' | 'chat' | 'about' | 'background-guide' | 'privacy'>('home');
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [nickname, setNickname] = useState('');
@@ -1531,6 +1531,59 @@ function RadioApp() {
             </div>
           </motion.div>
         )}
+
+        {activeView === 'privacy' && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`max-w-4xl mx-auto w-full backdrop-blur-xl border rounded-3xl p-8 md:p-12 space-y-8 shadow-2xl transition-colors duration-500 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}
+          >
+            <div className="flex justify-between items-start mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-orange-600/20 rounded-2xl flex items-center justify-center">
+                  <Star className="w-8 h-8 text-orange-600" />
+                </div>
+                <div>
+                  <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Privacidade</h2>
+                  <p className="text-orange-500 font-mono text-xs tracking-widest uppercase mt-1">Política de Proteção</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveView('home')}
+                className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-gray-400 hover:text-gray-900'}`}
+                title="Voltar para Rádios"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className={`space-y-6 text-sm leading-relaxed ${isDarkMode ? 'text-white/70' : 'text-gray-600'}`}>
+              <section>
+                <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>1. Coleta de Dados</h3>
+                <p>O aplicativo Rádios Top não coleta informações pessoais identificáveis dos seus usuários para uso comercial. Dados técnicos anônimos podem ser processados para garantir a qualidade do streaming e segurança da plataforma.</p>
+              </section>
+
+              <section>
+                <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>2. Uso de Serviços de Terceiros</h3>
+                <p>Utilizamos serviços como Firebase (Google) para autenticação e banco de dados. Os links de streaming são fornecidos por estações de rádio independentes e o uso desses canais está sujeito aos termos de cada emissora.</p>
+              </section>
+
+              <section>
+                <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>3. Segurança</h3>
+                <p>Empregamos protocolos de segurança modernos para proteger a comunicação entre seu dispositivo e nossos servidores. Recomendamos o uso de conexões seguras sempre que possível.</p>
+              </section>
+
+              <section>
+                <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>4. Contato</h3>
+                <p>Para dúvidas sobre privacidade, entre em contato através do Mural de Recados oficial no aplicativo.</p>
+              </section>
+
+              <div className="pt-8 border-t border-white/10 text-center opacity-50">
+                <p>© 2026 Rádios Top - Todos os direitos reservados.</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </main>
 
       {/* Sidebar */}
@@ -1589,6 +1642,13 @@ function RadioApp() {
                 >
                   <Infinity className={`w-5 h-5 ${activeView === 'background-guide' ? 'text-white' : 'text-orange-600'}`} />
                   <span className="font-bold">Tocar sem parar</span>
+                </button>
+                <button 
+                  onClick={() => { setActiveView('privacy'); setIsSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all ${activeView === 'privacy' ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : (isDarkMode ? 'hover:bg-white/5 text-white/60 hover:text-white' : 'hover:bg-black/5 text-gray-600 hover:text-gray-900')}`}
+                >
+                  <Star className={`w-5 h-5 ${activeView === 'privacy' ? 'text-white' : 'text-orange-600'}`} />
+                  <span className="font-bold">Privacidade</span>
                 </button>
                 <button 
                   onClick={() => { setIsModalOpen(true); setIsSidebarOpen(false); }}

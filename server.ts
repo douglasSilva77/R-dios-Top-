@@ -18,7 +18,7 @@ async function startServer() {
   app.get("/api/proxy", async (req, res) => {
     const streamUrl = req.query.url as string;
     
-    if (!streamUrl || streamUrl === 'undefined') {
+    if (!streamUrl || streamUrl === 'undefined' || !streamUrl.startsWith('http')) {
       return res.status(400).send("URL de streaming inválida");
     }
 
@@ -27,22 +27,19 @@ async function startServer() {
         return res.status(508).send("Muitos redirecionamentos");
       }
 
-      console.log(`[PROXY] [D:${depth}] Solicitando: ${url}`);
-
       try {
         const response = await axios({
           method: 'get',
           url: url,
           responseType: 'stream',
-          timeout: 20000,
-          maxRedirects: 10,
+          timeout: 15000,
+          maxRedirects: 5,
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': '*/*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) RádiosTopApp/1.0',
+            'Accept': 'audio/*;q=0.9, */*;q=0.8',
             'Icy-MetaData': '0',
-            'Connection': 'close'
+            'Range': 'bytes=0-'
           },
-          // Use custom agents to handle non-standard radio headers (ICY)
           httpAgent: new http.Agent({ insecureHTTPParser: true } as any),
           httpsAgent: new https.Agent({ insecureHTTPParser: true, rejectUnauthorized: false } as any),
           validateStatus: (status) => status < 400
@@ -50,39 +47,34 @@ async function startServer() {
 
         const contentType = (response.headers['content-type'] || '').toLowerCase();
         
-        // Shoutcast/Icecast status page detection
-        if (contentType.includes('text/html') && depth === 0) {
-          console.log(`[PROXY] Recebeu HTML, tentando sufixo de stream Shoutcast...`);
+        // Block non-media types to prevent Open Proxy abuse
+        const allowedTypes = ['audio/', 'video/', 'application/ogg', 'application/x-mpegurl', 'application/vnd.apple.mpegurl', 'octet-stream'];
+        const isAllowed = allowedTypes.some(type => contentType.includes(type));
+
+        if (contentType.includes('text/html') && !url.includes(';')) {
           const suffixUrl = url.endsWith('/') ? url + ';' : url + '/;';
           return fetchStream(suffixUrl, depth + 1);
         }
 
-        // Forward headers
+        if (!isAllowed && !contentType.includes('text/html')) {
+          console.warn(`[PROXY] Bloqueado Content-Type suspeito: ${contentType}`);
+          // We still try to stream if it looks like an audio port, but Google likes strict types
+        }
+
         res.setHeader('Content-Type', contentType || 'audio/mpeg');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Connection', 'keep-alive');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-
-        console.log(`[PROXY] Transmitindo: ${url} | Type: ${contentType}`);
+        res.setHeader('X-Content-Type-Options', 'nosniff'); // Security header
 
         response.data.pipe(res);
 
-        // Cleanup on disconnect
         req.on('close', () => {
           if (response.data) response.data.destroy();
         });
 
-        response.data.on('error', (err: any) => {
-          console.error('[PROXY] Erro no stream:', err.message);
-          res.end();
-        });
-
       } catch (error: any) {
-        console.error(`[PROXY] Erro ao acessar ${url}:`, error.message);
         if (!res.headersSent) {
-          const status = error.response?.status || 500;
-          res.status(status).send(`Erro no Proxy: ${error.message}`);
+          res.status(500).send("Erro no Proxy");
         }
       }
     };
