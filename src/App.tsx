@@ -134,7 +134,6 @@ function RadioApp() {
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [carouselItems, setCarouselItems] = useState<any[]>(CAROUSEL_ITEMS);
   const [isCarouselModalOpen, setIsCarouselModalOpen] = useState(false);
-  const [isCloseAppModalOpen, setIsCloseAppModalOpen] = useState(false);
   const [editingCarouselId, setEditingCarouselId] = useState<string | null>(null);
   const [carouselFormData, setCarouselFormData] = useState({
     url: '',
@@ -143,35 +142,29 @@ function RadioApp() {
     order: 0
   });
 
-  // Back button handling for mobile
+  // Back button handling for mobile - close modals/views instead of exiting
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       // If any modal or view is open, close it instead of going back in browser history
-      if (isSidebarOpen || isModalOpen || isCarouselModalOpen || isCloseAppModalOpen || activeView !== 'home') {
+      if (isSidebarOpen || isModalOpen || isCarouselModalOpen || activeView !== 'home') {
         event.preventDefault();
         
         if (isSidebarOpen) setIsSidebarOpen(false);
         if (isModalOpen) setIsModalOpen(false);
         if (isCarouselModalOpen) setIsCarouselModalOpen(false);
-        if (isCloseAppModalOpen) setIsCloseAppModalOpen(false);
         if (activeView !== 'home') setActiveView('home');
         
-        // Push state again to keep the user on the page if they hit back again
-        window.history.pushState({ noBack: true }, '');
-      } else {
-        // We are on home screen with no modals open
-        // Show the "Close App" confirmation modal
-        setIsCloseAppModalOpen(true);
+        // Push state again to keep the user on the page
         window.history.pushState({ noBack: true }, '');
       }
     };
 
-    // Initial push state to enable back button interception
+    // Initial push state to enable back button interception for modals
     window.history.pushState({ noBack: true }, '');
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isSidebarOpen, isModalOpen, isCarouselModalOpen, isCloseAppModalOpen, activeView]);
+  }, [isSidebarOpen, isModalOpen, isCarouselModalOpen, activeView]);
 
   // Fetch Admin Password from Firebase
   useEffect(() => {
@@ -2264,83 +2257,6 @@ function RadioApp() {
                     ))}
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Close App Confirmation Modal */}
-      <AnimatePresence>
-        {isCloseAppModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCloseAppModalOpen(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className={`relative border rounded-3xl p-8 w-full max-w-sm text-center transition-colors duration-500 ${isDarkMode ? 'bg-[#151619] border-white/10' : 'bg-white border-gray-200 shadow-2xl'}`}
-            >
-              <div className="w-16 h-16 bg-orange-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Info className="w-8 h-8 text-orange-500" />
-              </div>
-              <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Atenção</h2>
-              <p className={`${isDarkMode ? 'text-white/60' : 'text-gray-500'} mb-8`}>Deseja fechar o aplicativo?</p>
-              
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => {
-                    // Stop audio immediately
-                    if (audioRef.current) {
-                      audioRef.current.pause();
-                      audioRef.current.src = '';
-                    }
-                    setIsPlaying(false);
-
-                    // Try multiple methods to close the app depending on the Android wrapper
-                    try {
-                      // 1. Cordova / PhoneGap
-                      if ((navigator as any).app && (navigator as any).app.exitApp) {
-                        (navigator as any).app.exitApp();
-                      } 
-                      // 2. Capacitor
-                      else if ((window as any).Capacitor && (window as any).Capacitor.Plugins && (window as any).Capacitor.Plugins.App) {
-                        (window as any).Capacitor.Plugins.App.exitApp();
-                      }
-                      // 3. Custom Android WebView Interfaces
-                      else if ((window as any).Android && (window as any).Android.closeApp) {
-                        (window as any).Android.closeApp();
-                      }
-                      else if ((window as any).Android && (window as any).Android.finish) {
-                        (window as any).Android.finish();
-                      }
-                      // 4. React Native WebView
-                      else if ((window as any).ReactNativeWebView) {
-                        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'closeApp' }));
-                      }
-                    } catch (e) {
-                      console.error("Error closing app natively:", e);
-                    }
-
-                    // 5. Standard Web / PWA Fallback
-                    window.close();
-                  }}
-                  className="flex-1 py-3 bg-orange-600 rounded-xl font-bold hover:bg-orange-700 transition-colors text-white"
-                >
-                  Sim
-                </button>
-                <button 
-                  onClick={() => setIsCloseAppModalOpen(false)}
-                  className={`flex-1 py-3 border rounded-xl font-bold transition-colors ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-700'}`}
-                >
-                  Não
-                </button>
               </div>
             </motion.div>
           </div>
